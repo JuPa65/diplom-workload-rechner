@@ -12,6 +12,4 @@ Aufruf: https://jupa65.github.io/diplom-workload-rechner/
 
 Datenschutz: Alle Eingaben bleiben im Browser des eigenen Geräts (localStorage). Nichts wird an einen Server übertragen, nichts landet im Repository.
 
-Aufruf: https://jupa65.github.io/diplom-workload-rechner/
-
 POR Jürgen Paulus, M.A. · FHSV Saarland
