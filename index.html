@@ -1,0 +1,673 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Diplom-Workload-Rechner</title></head><body>
+<title>Diplom-Workload-Rechner</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: ein schmales Arbeitsblatt, oben die Semesterbilanz, darunter je Studienabschnitt eine Fachtabelle */
+:root{
+  --bg:#f4f6fa; --surface:#ffffff; --fg:#1b2333; --muted:#5d6779; --line:#d9dee8;
+  --accent:#2a4fa0; --accent-soft:#e3eaf8;
+  --ok:#1f7a4d; --ok-soft:#ddf2e6; --warn:#9a6400; --warn-soft:#fbefd5; --bad:#b0322b; --bad-soft:#f9e0de;
+  --f-display:"IBM Plex Sans Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11151d; --surface:#181e29; --fg:#e4e8f0; --muted:#98a2b4; --line:#2c3445;
+  --accent:#8cabf0; --accent-soft:#22304d;
+  --ok:#6fd19c; --ok-soft:#173326; --warn:#f0c062; --warn-soft:#3a2d12; --bad:#f08a82; --bad-soft:#3d1c1a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11151d; --surface:#181e29; --fg:#e4e8f0; --muted:#98a2b4; --line:#2c3445;
+  --accent:#8cabf0; --accent-soft:#22304d;
+  --ok:#6fd19c; --ok-soft:#173326; --warn:#f0c062; --warn-soft:#3a2d12; --bad:#f08a82; --bad-soft:#3d1c1a; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:980px;margin:0 auto;padding-inline:16px;padding-block:24px 48px;display:flex;flex-direction:column;gap:20px}
+h1,h2{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:1.9rem}
+h2{font-size:1.15rem}
+.lead{color:var(--muted);margin:6px 0 0;max-width:65ch}
+.eyebrow{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+label.fld{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted)}
+input,select{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;min-width:0}
+input[type=number]{font-family:var(--f-num);width:6.5em}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button{font:inherit;font-size:.88rem;border-radius:6px;padding:7px 12px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:600}
+button.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+button.ghost:hover{color:var(--bad)}
+button.danger{border-color:var(--bad);color:var(--bad)}
+.tablebox{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th{font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600;text-align:left;padding:6px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.n,th.n{text-align:right;font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+td.strong{font-weight:600;color:var(--accent)}
+tfoot td{font-weight:600;border-bottom:none}
+td input.name{width:100%;min-width:9em}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.78rem;font-weight:600;font-family:var(--f-body)}
+.ok{background:var(--ok-soft);color:var(--ok)} .warn{background:var(--warn-soft);color:var(--warn)} .bad{background:var(--bad-soft);color:var(--bad)}
+.secthead{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;justify-content:space-between}
+.secthead .row input.sname{width:16em;font-weight:600}
+.badge{background:var(--warn-soft);color:var(--warn);border-radius:6px;padding:8px 12px;font-size:.88rem}
+.note{color:var(--muted);font-size:.85rem;margin:0;max-width:70ch}
+.formula{font-family:var(--f-num);font-size:.82rem;background:var(--accent-soft);color:var(--fg);border-radius:6px;padding:10px 12px;overflow-x:auto;white-space:nowrap}
+textarea{font-family:var(--f-num);font-size:.8rem;width:100%;min-height:110px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:8px;box-sizing:border-box}
+.big{font-family:var(--f-num);font-size:1.6rem;font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.kpi{display:flex;flex-direction:column;gap:2px}
+.tl{display:flex;flex-direction:column;gap:6px;min-width:640px}
+.tl-row{display:grid;grid-template-columns:4.5em repeat(12,1fr);gap:3px;align-items:stretch}
+.tl-head span{font-size:.72rem;color:var(--muted);text-align:center;font-family:var(--f-num)}
+.tl-lab{font-size:.8rem;font-weight:600;align-self:center}
+.ph{font-weight:500;font-size:.76rem;border-radius:5px;padding:6px 6px;line-height:1.25;color:var(--fg)}
+.ph.th{background:var(--accent-soft)} .ph.pr{background:var(--ok-soft)} .ph.intro{background:var(--warn-soft)} .ph.ex{background:var(--bad-soft)}
+.weights{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.weights .w{display:flex;flex-direction:column;gap:2px;font-size:.88rem;border-left:2px solid var(--line);padding-left:10px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--line)}
+.tabs button{border:none;border-bottom:3px solid transparent;border-radius:0;background:transparent;color:var(--muted);font-weight:600;padding:8px 12px}
+.tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.tabpanel{display:flex;flex-direction:column;gap:20px}
+.tabpanel[hidden]{display:none!important}
+label.fld.grow{flex:1 1 12em}
+label.fld.grow input{width:100%}
+.empty{border:1px dashed var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.empty p{margin:0;max-width:65ch}
+.linkbtn{background:none;border:none;padding:0;color:inherit;text-decoration:underline;font-weight:600;cursor:pointer}
+.chart svg{width:100%;height:auto;max-width:100%;display:block}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .lim{stroke:var(--bad);stroke-width:1.5;stroke-dasharray:5 4}
+.chart .ax{fill:var(--muted);font-size:11px;font-family:var(--f-num)}
+.chart .val{fill:var(--fg);font-size:11px;font-weight:600;font-family:var(--f-num)}
+.c1{fill:var(--accent);background:var(--accent)} .c2{fill:var(--ok);background:var(--ok)} .c3{fill:var(--warn);background:var(--warn)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.8rem;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.refs{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px;font-size:.88rem;max-width:80ch}
+.refs a{color:var(--accent)}
+/* Registerkarten fuer Studienabschnitte, auf dem Handy waagerecht wischbar */
+[hidden]{display:none!important}
+details.panel summary{cursor:pointer;list-style:revert}
+details.panel[open] summary{margin-bottom:8px}
+.secttabs{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding:2px 0 4px;position:sticky;top:0;z-index:2;background:var(--bg)}
+.secttabs button{flex:none;white-space:nowrap;border-radius:999px;padding:7px 14px;font-weight:600;color:var(--muted);background:var(--surface)}
+.secttabs button.on{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.secttabs .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-left:7px;vertical-align:0;background:var(--line)}
+.dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
+@media (max-width:640px){
+  .wrap{padding-inline:12px}
+  h1{font-size:1.55rem}
+  .ftbox{overflow-x:visible}
+  table.ft thead{display:none}
+  table.ft,table.ft tbody,table.ft tfoot{display:block}
+  table.ft tr{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;padding:10px 0;border-bottom:1px solid var(--line)}
+  table.ft td{border:none;padding:2px 0;display:flex;justify-content:space-between;align-items:center;gap:8px;min-width:0}
+  table.ft td::before{content:attr(data-l);font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-family:var(--f-body);font-weight:600}
+  table.ft td.fname{grid-column:1/-1}
+  table.ft td.fname::before,table.ft td.del::before{content:none}
+  table.ft td.del{justify-content:flex-end}
+  table.ft tfoot td:empty{display:none}
+  table.ft tfoot td.fname{font-weight:700}
+  table.ft input[type=number]{width:5.2em}
+  table.ft select{max-width:7.5em}
+  .secthead .row input.sname{width:100%}
+  #sumTable th:nth-child(3),#sumTable td:nth-child(3),#sumTable th:nth-child(4),#sumTable td:nth-child(4),#sumTable th:nth-child(6),#sumTable td:nth-child(6){display:none}
+  #sumTable td,#sumTable th{padding:6px 4px}
+  #sumTable th{white-space:normal}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">FHSV Saarland &middot; Diplom gehobener Polizeivollzugsdienst &middot; Studienplan 2024</div>
+    <h1>Diplom-Workload-Rechner</h1>
+    <p class="lead">Alle F&#228;cher mit ihren Lehrverpflichtungsstunden (LVh) aus der Stundentafel und alle Leistungsnachweise aus der APO sind schon eingetragen. Der Rechner zeigt dir je Studienjahr den Gesamtaufwand und die echte Wochenlast: Unterricht plus eigenes Lernen plus Pr&#252;fungsvorbereitung.</p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Bereiche">
+    <button type="button" role="tab" id="tb-rechner" data-tab="rechner" aria-controls="tab-rechner">Studienplan-Rechner</button>
+    <button type="button" role="tab" id="tb-tagebuch" data-tab="tagebuch" aria-controls="tab-tagebuch">Mein Lerntagebuch</button>
+    <button type="button" role="tab" id="tb-quellen" data-tab="quellen" aria-controls="tab-quellen">Annahmen und Quellen</button>
+  </nav>
+
+  <div id="tab-rechner" role="tabpanel" aria-labelledby="tb-rechner" class="tabpanel">
+  <div id="exampleBadge" class="badge" hidden>Vorbelegt mit Stundentafel (Anlage 1) und APO g. D. Pol. Gesch&#228;tzt sind nur: Lehrwochen je Studienjahr, die Aufteilung der Hauptstudium-Stunden je zur H&#228;lfte auf Jahr 2 und 3, Selbststudium-Faktoren und Vorbereitungsstunden (Normalwerte aus der Workload-Untersuchung 2026). Was belegt und was angenommen ist, steht im Reiter &#8222;Annahmen und Quellen&#8220;. Mit deinem Lerntagebuch kannst du die Faktoren durch eigene Werte ersetzen.</div>
+
+  <section class="panel" aria-labelledby="tlH">
+    <h2 id="tlH">Ablauf des Studiums</h2>
+    <div class="tablebox"><div class="tl" role="img" aria-label="Zeitleiste der drei Studienjahre von Oktober bis September">
+      <div class="tl-row tl-head"><span></span><span>Okt</span><span>Nov</span><span>Dez</span><span>Jan</span><span>Feb</span><span>M&#228;r</span><span>Apr</span><span>Mai</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span></div>
+      <div class="tl-row"><span class="tl-lab">1. Jahr</span><b class="ph intro" style="grid-column:2/5">Einf&#252;hrung</b><b class="ph th" style="grid-column:5/10">Fachstudium, 9 Klausuren &#224; 60 Min.</b><b class="ph pr" style="grid-column:10/14">Praktikum 1 + Urlaub</b></div>
+      <div class="tl-row"><span class="tl-lab">2. Jahr</span><b class="ph th" style="grid-column:2/7">Fachstudium</b><b class="ph pr" style="grid-column:7/10">Praktikum 2</b><b class="ph th" style="grid-column:10/14">Fachstudium + Urlaub, 2 Klausuren &#224; 120 Min.</b></div>
+      <div class="tl-row"><span class="tl-lab">3. Jahr</span><b class="ph th" style="grid-column:2/5">Fachstudium + Diplomarbeit</b><b class="ph pr" style="grid-column:5/7">Prakt. 3</b><b class="ph th" style="grid-column:7/14">Fachstudium + Urlaub, 2 Klausuren &#224; 180 Min.</b></div>
+      <div class="tl-row"><span class="tl-lab">danach</span><b class="ph ex" style="grid-column:2/3">schriftl.</b><b class="ph ex" style="grid-column:3/5">m&#252;ndlich</b></div>
+    </div></div>
+    <p class="note">Nach Anlage 2 Studienplan und &#167; 7 APO. Lehrwochen im Rechner sind Sch&#228;tzwerte ohne Urlaub, Feiertage und Pr&#252;fungstage. Erste Hilfe und Fahrtechnische Ausbildung (FaSit) stehen in der APO, haben aber keine LVh in der Stundentafel und fehlen deshalb in der Rechnung.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="noteH">
+    <h2 id="noteH">Was in die Endnote z&#228;hlt</h2>
+    <div class="weights">
+      <div class="w"><span class="big">40 %</span><span>3 schriftliche Abschlussarbeiten &#224; 4 Std. (Polizeiwiss., Recht, fachgruppen&#252;bergreifend)</span></div>
+      <div class="w"><span class="big">30 %</span><span>m&#252;ndliche Pr&#252;fung, 25 bis 30 Min.</span></div>
+      <div class="w"><span class="big">20 %</span><span>Vornote: 9 Klausuren Jahr 1 (einfach), 2 Klausuren Jahr 2 (zweifach), 2 Klausuren Jahr 3 (dreifach), 6 Leistungsnachweise (alle einfach)</span></div>
+      <div class="w"><span class="big">10 %</span><span>Diplomarbeit, max. 30 Seiten, 3 Monate ab Beginn Jahr 3</span></div>
+    </div>
+    <p class="note">F&#252;r das Bestehen eines Studienabschnitts z&#228;hlen die 2 Klausuren und die 3 Leistungsnachweise im Hauptstudium jeweils einfach; die doppelte und dreifache Gewichtung der Klausuren gilt nur f&#252;r die Vornote in der Endnote (Auskunft Pr&#252;fungsamt, Oktober 2026). Hei&#223;t f&#252;r die Planung: 70 % der Endnote fallen erst ganz am Ende. Wer ab Jahr 1 mit Wiederholungssystem (Karteikarten, Altklausuren) lernt, muss vor der Abschlusspr&#252;fung nicht bei null anfangen. Quelle: &#167; 13, &#167; 21, &#167; 22, &#167; 26, &#167; 29 APO g. D. Pol.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="howH">
+    <h2 id="howH">So funktioniert der Rechner</h2>
+    <ol class="refs" style="max-width:none">
+      <li><b>Studienabschnitt w&#228;hlen:</b> Unten gibt es f&#252;r jedes Studienjahr eine Registerkarte (1. Jahr, 2. Jahr, 3. Jahr, Pr&#252;fungszeit).</li>
+      <li><b>Werte pr&#252;fen:</b> In jeder Zeile stehen die LVh aus der Stundentafel, der Faktor f&#252;r das eigene Lernen und die Stunden f&#252;r die Pr&#252;fungsvorbereitung schon drin (Normalwerte). F&#228;llt Ihnen ein Fach schwer, nehmen Sie Faktor und Pr&#252;fungsvorbereitung mal 1,25, mit viel Vorwissen mal 0,80.</li>
+      <li><b>Ergebnis ablesen:</b> Die Bilanz direkt darunter rechnet sich aus diesen Zeilen automatisch: Gesamtstunden, Wochenlast und Ampel je Studienjahr. Der Punkt auf jeder Registerkarte zeigt dieselbe Ampel.</li>
+      <li><b>Nachsteuern:</b> Nach vier Wochen im Reiter &#8222;Mein Lerntagebuch&#8220; den eigenen Faktor &#252;bernehmen.</li>
+    </ol>
+  </section>
+
+  <section class="panel" aria-labelledby="sumH">
+    <h2 id="sumH">Bilanz je Studienabschnitt</h2>
+    <p class="note">Wird automatisch aus den Zeilen in den Registerkarten unten berechnet.</p>
+    <div class="kpis" id="kpis"></div>
+    <div class="tablebox"><table id="sumTable"></table></div>
+    <p class="note">Ampel: gr&#252;n bis zur Warnschwelle, gelb bis 20 % dar&#252;ber, rot dar&#252;ber. Ein Vollzeitstudium ist auf rund 40 Stunden pro Woche ausgelegt.</p>
+  </section>
+
+
+
+  <div id="sections" style="display:flex;flex-direction:column;gap:12px"></div>
+
+  <div class="row">
+    <button class="primary" id="addSect" type="button">+ Studienabschnitt</button>
+    <button id="loadEx" type="button">Studienplan neu laden</button>
+    <button class="danger" id="clearAll" type="button">Alles leeren</button>
+  </div>
+
+  <details class="panel" id="settings">
+    <summary><h2 id="setH" style="display:inline">Vorgaben f&#252;r neue F&#228;cher und Ampel</h2> <span class="note">(nur selten n&#246;tig, zum Aufklappen tippen)</span></summary>
+    <p class="note">Diese Werte &#228;ndern nichts an den F&#228;chern, die schon eingetragen sind. Sie werden nur &#252;bernommen, wenn Sie in einem Studienabschnitt mit &#8222;+ Fach&#8220; ein neues Fach anlegen. Die Warnschwelle legt fest, ab wann die Ampel gelb und rot wird.</p>
+    <div class="row">
+      <label class="fld" for="gFaktor">Selbststudium-Faktor f&#252;r neue F&#228;cher<input id="gFaktor" type="number" step="0.01" min="0"></label>
+      <label class="fld" for="gPruef">Pr&#252;fungsvorbereitung f&#252;r neue F&#228;cher (Std.)<input id="gPruef" type="number" step="5" min="0"></label>
+      <label class="fld" for="gSchwelle">Warnschwelle (Std. pro Woche)<input id="gSchwelle" type="number" step="1" min="1"></label>
+    </div>
+    <div class="formula">Pr&#228;senz = LVh &#215; 0,75 (1 LVh = 45 Min., Angabe des Fachbereichs) &nbsp;|&nbsp; Selbststudium = Pr&#228;senz &#215; Faktor &nbsp;|&nbsp; Gesamt = Pr&#228;senz + Selbststudium + Pr&#252;fungsvorbereitung (alles in Zeitstunden)</div>
+    <p class="note">Normalwerte je Pr&#228;senzstunde aus der Workload-Untersuchung 2026: Grundstudium Theorie 0,47, Recht 0,56, Seminar und &#220;bung 0,37; Hauptstudium I 0,53, 0,64, 0,43; Hauptstudium II 0,60, 0,72, 0,48; Training, Schie&#223;en und Sport 0,05. Faktor 0,47 hei&#223;t: pro 90 Min. Unterricht rund 42 Min. Vor- und Nachbereitung. Pr&#252;fungsvorbereitung im Grundstudium: LVh &#215; 0,46 je Klausurfach. Schweres Fach: Faktor und Pr&#252;fungsvorbereitung &#215; 1,25, viel Vorwissen &#215; 0,80. Einheit &#8222;SWS&#8220; rechnet SWS &#215; Wochen, &#8222;Std. gesamt&#8220; &#252;bernimmt die Zahl direkt.</p>
+  </details>
+
+  <section class="panel" aria-labelledby="expH">
+    <h2 id="expH">Daten sichern und &#252;bernehmen</h2>
+    <p class="note">Deine Eingaben bleiben in diesem Browser gespeichert. Zum Sichern oder &#220;bertragen auf ein anderes Ger&#228;t die Daten kopieren und dort wieder einf&#252;gen.</p>
+    <div class="row">
+      <button id="copyBtn" type="button">Daten kopieren</button>
+      <button id="importBtn" type="button">Eingef&#252;gte Daten &#252;bernehmen</button>
+      <span id="msg" class="note" role="status"></span>
+    </div>
+    <textarea id="io" aria-label="Daten im JSON-Format" placeholder="Hier gesicherte Daten einf&#252;gen"></textarea>
+  </section>
+  </div>
+  <div id="tab-tagebuch" role="tabpanel" aria-labelledby="tb-tagebuch" class="tabpanel" hidden>
+    <section class="panel" aria-labelledby="tbH">
+      <div class="secthead">
+        <div>
+          <h2 id="tbH">Mein Lerntagebuch</h2>
+          <p class="note">Trag jeden Tag ein, wie lange du Unterricht hattest und wie lange du selbst gelernt hast. Nach einem Monat siehst du deinen echten Workload und deinen pers&#246;nlichen Faktor Selbststudium zu Unterricht.</p>
+        </div>
+        <span id="tbStore" class="pill warn">Speicherort wird gepr&#252;ft</span>
+      </div>
+      <form id="tbForm" class="row" autocomplete="off">
+        <label class="fld" for="tbDate">Datum<input id="tbDate" type="date" required></label>
+        <label class="fld grow" for="tbFach">Fach<input id="tbFach" list="tbFaecher" placeholder="z. B. Strafrecht" required></label>
+        <datalist id="tbFaecher"></datalist>
+        <label class="fld" for="tbArt">Art
+          <select id="tbArt">
+            <option value="U">Unterricht</option>
+            <option value="N">Vor- und Nachbereitung</option>
+            <option value="K">Klausurvorbereitung</option>
+            <option value="H">Hausarbeit, Projekt, Referat</option>
+          </select></label>
+        <label class="fld" for="tbDauer">Dauer<input id="tbDauer" type="number" min="0" step="any" required></label>
+        <label class="fld" for="tbEinheit">Einheit
+          <select id="tbEinheit"><option value="min">Minuten</option><option value="h">Stunden</option><option value="lvh">LVh (45 Min.)</option></select></label>
+        <label class="fld grow" for="tbNotiz">Notiz (optional)<input id="tbNotiz" placeholder="z. B. Altklausur gerechnet"></label>
+        <button class="primary" type="submit">Eintragen</button>
+      </form>
+      <p id="tbMsg" class="note" role="status"></p>
+    </section>
+
+    <section class="panel" aria-labelledby="tbSumH">
+      <div class="secthead">
+        <h2 id="tbSumH">Auswertung</h2>
+        <label class="fld" for="tbMonat">Monat<input id="tbMonat" type="month"></label>
+      </div>
+      <div id="tbEmpty" class="empty">
+        <p><b>Noch keine Eintr&#228;ge in diesem Monat.</b> Trag oben deinen ersten Lerntag ein. Unterricht kannst du direkt in LVh erfassen, zum Beispiel 8 LVh f&#252;r einen vollen Unterrichtstag.</p>
+        <button type="button" id="tbDemo">Beispielwoche zum Ansehen laden</button>
+      </div>
+      <div id="tbDemoBadge" class="badge" hidden>Das sind Beispieleintr&#228;ge zum Ausprobieren. <button type="button" class="linkbtn" id="tbDemoDel">Beispiel entfernen</button></div>
+      <div id="tbResult">
+        <div class="kpis" id="tbKpis"></div>
+        <div id="tbChart" class="chart" role="img" aria-label="Stunden pro Kalenderwoche"></div>
+        <div class="tablebox"><table id="tbWeeks"></table></div>
+        <p class="note">Belastung: 1 = entspannt, 3 = gut fordernd, 5 = am Limit. Eine Einsch&#228;tzung pro Woche reicht.</p>
+        <h2>Nach F&#228;chern</h2>
+        <div class="tablebox"><table id="tbFachTab"></table></div>
+        <div class="row" id="tbApplyRow">
+          <button type="button" id="tbApply">Meinen Faktor im Rechner verwenden</button>
+          <span class="note" id="tbApplyMsg"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="tbListH">
+      <h2 id="tbListH">Eintr&#228;ge</h2>
+      <div class="tablebox"><table id="tbList"></table></div>
+    </section>
+
+    <section class="panel" aria-labelledby="tbExpH">
+      <h2 id="tbExpH">Export f&#252;r Auswertung oder Studie</h2>
+      <p class="note">F&#252;r eine Workload-Studie kannst du deine Eintr&#228;ge unter einem Pseudonym exportieren. Dein Name wird nirgends gespeichert.</p>
+      <div class="row">
+        <label class="fld" for="tbPseudo">Pseudonym<input id="tbPseudo" placeholder="z. B. Fuchs-27"></label>
+        <button type="button" id="tbCsvCopy">CSV kopieren</button>
+        <button type="button" id="tbCsvSave" hidden>CSV-Datei speichern</button>
+        <span id="tbExpMsg" class="note" role="status"></span>
+      </div>
+      <textarea id="tbCsv" aria-label="CSV-Export" readonly hidden></textarea>
+    </section>
+  </div>
+
+  <div id="tab-quellen" role="tabpanel" aria-labelledby="tb-quellen" class="tabpanel" hidden>
+    <section class="panel" aria-labelledby="aqH">
+      <h2 id="aqH">Was belegt ist und was angenommen</h2>
+      <p class="note">Der Rechner mischt feste Vorgaben aus Studienplan und APO mit Planungsannahmen. Die Annahmen sind keine Messwerte. Sie lassen sich mit dem Lerntagebuch oder einer Workload-Erhebung im Jahrgang durch echte Zahlen ersetzen.</p>
+      <div class="tablebox"><table>
+        <thead><tr><th>Wert im Rechner</th><th>Stand</th><th>Herkunft</th></tr></thead>
+        <tbody>
+          <tr><td>F&#228;cher und LVh je Fach, Summe 2.580 LVh</td><td><span class="pill ok">belegt</span></td><td>Studienplan 2024, Anlage 1 (FHSV 2025)</td></tr>
+          <tr><td>1 LVh = 45 Minuten</td><td><span class="pill ok">belegt</span></td><td>Angabe des Fachbereichs Polizeivollzugsdienst</td></tr>
+          <tr><td>Ablauf der Studienjahre, Praktika, Pr&#252;fungszeitraum</td><td><span class="pill ok">belegt</span></td><td>Studienplan 2024, Anlage 2; &#167; 7 APO g. D. Pol.</td></tr>
+          <tr><td>Klausuren, Dauer und Gewichtung in der Endnote</td><td><span class="pill ok">belegt</span></td><td>&#167;&#167; 13, 21, 22, 26, 29 APO g. D. Pol.</td></tr>
+          <tr><td>Art der 6 Leistungsnachweise im Hauptstudium</td><td><span class="pill ok">belegt</span></td><td>Pr&#228;sentation Schl&#252;sselkompetenzen I, Teil 1 (Milz und Weiler-Kunz 2026), Festlegung der Fachbereichsleitung</td></tr>
+          <tr><td>Lehrwochen je Abschnitt (27, 30, 34, 10)</td><td><span class="pill warn">Annahme</span></td><td>aus Anlage 2 abgeleitet, abz&#252;glich Urlaub, Feiertage und Pr&#252;fungstage; 27 Wochen im 1. Jahr bei Fachunterricht ab November (wie Arbeitsblatt 3), bei Beginn im Januar rund 20</td></tr>
+          <tr><td>Hauptstudium-LVh je zur H&#228;lfte auf Jahr 2 und 3</td><td><span class="pill warn">Annahme</span></td><td>Die Stundentafel trennt die Studienjahre nicht</td></tr>
+          <tr><td>Selbststudium-Faktoren je Pr&#228;senzstunde: Grundstudium Theorie 0,47, Recht 0,56, Seminar 0,37; Hauptstudium I 0,53, 0,64, 0,43; Hauptstudium II 0,60, 0,72, 0,48; Training 0,05</td><td><span class="pill warn">Normalwert</span></td><td>aus Modulhandb&#252;chern trianguliert: Akademie der Polizei Hamburg Eigenstudium je Pr&#228;senzstunde 0,79 im Grundstudium 1 und 0,91 im Hauptstudium 1 (inkl. Pr&#252;fungsvorbereitung); andere Polizeihochschulen 0,5 bis 1,15; Fachhochschulen empirisch 15 h Selbststudium bei 18 bis 19 h Lehrveranstaltungen (Middendorff et al. 2017; Vogel und Woisch 2013). Rechtsf&#228;cher h&#246;her (Faktor 1,20), Seminare niedriger (0,80), Trainings kaum Selbststudium (0,10). Gesamtwert mit Pr&#252;fungsvorbereitung rund 0,85 je Pr&#228;senzstunde</td></tr>
+          <tr><td>Pr&#252;fungsvorbereitung: Grundstudium LVh &#215; 0,46 je Klausurfach; Hauptstudium rund 280 h je Jahr f&#252;r 2 Klausuren und 3 Leistungsnachweise</td><td><span class="pill warn">Normalwert</span></td><td>0,40 h je LVh plus 15 % Puffer; hergeleitet aus Faustregeln (Pr&#252;fungsvorbereitung ein F&#252;nftel bis knapp ein Drittel des Modulaufwands) und Plausibilit&#228;tspr&#252;fung je Klausurstunde</td></tr>
+          <tr><td>Abschlusspr&#252;fung: laufende Wiederholung 130 h, Endspurt schriftlich 100 h, m&#252;ndlich 60 h</td><td><span class="pill warn">Normalwert</span></td><td>0,15 h je LVh der Rechts- und Polizeiwissenschaften plus 6 &#220;bungsklausuren</td></tr>
+          <tr><td>Diplomarbeit 200 Stunden</td><td><span class="pill warn">Normalwert</span></td><td>3 Monate Bearbeitungszeit, h&#246;chstens 30 Seiten (APO), etwa 15 Stunden pro Woche; Bachelorarbeiten anderer Polizeihochschulen 240 bis 300 h</td></tr>
+          <tr><td>Warnschwelle 40 Stunden pro Woche</td><td><span class="pill warn">Orientierung</span></td><td>ECTS: 1.500 bis 1.800 Arbeitsstunden pro Studienjahr (Europ&#228;ische Kommission 2015), umgelegt auf rund 40 bis 45 Arbeitswochen</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Wichtig zur Einordnung: Zeittagebuch-Studien zeigen, dass die tats&#228;chliche Lernzeit stark nach Fach, Woche und Person schwankt und dass gleichm&#228;&#223;iges Selbststudium selten ist (Schulmeister und Metzger 2011). Jeder feste Faktor ist deshalb ein Planungswert, kein Abbild der Wirklichkeit.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="qH">
+      <h2 id="qH">Quellen</h2>
+      <ul class="refs">
+        <li>Europ&#228;ische Kommission (2015) <a href="https://education.ec.europa.eu/sites/default/files/document-library-docs/ects-users-guide_en.pdf" target="_blank" rel="noopener">ECTS Users&#8217; Guide</a>. Luxemburg: Amt f&#252;r Ver&#246;ffentlichungen der Europ&#228;ischen Union.</li>
+        <li>Fachhochschule f&#252;r Verwaltung des Saarlandes (2025) Studienplan 2024 f&#252;r die Ausbildung zum gehobenen Polizeivollzugsdienst, Stand 22. Juli 2025. G&#246;ttelborn: FHSV.</li>
+        <li>FU Berlin (2025) <a href="https://www.ewi-psy.fu-berlin.de/psychologie/arbeitsbereiche/ppg/publikationen/forschung/Schriftenreihe/Gesundheitsbericht-01-25/Workload_FU25.pdf" target="_blank" rel="noopener">Workload: Gesundheitsbericht der Studierenden 2025</a>. Berlin: Freie Universit&#228;t Berlin.</li>
+        <li>Kroher, M. et al. (2023) <a href="https://www.studierendenwerke.de/fileadmin/api/files/SiD_Exec_Summary_DE_barrierefrei.pdf" target="_blank" rel="noopener">Die Studierendenbefragung in Deutschland: 22. Sozialerhebung</a>. Berlin: BMBF.</li>
+        <li>Milz, C. und Weiler-Kunz, N. (2026) Schl&#252;sselkompetenzen I, Teil 1: &#220;berblick Struktur und Ablauf des Studiums. Unver&#246;ffentlichte Pr&#228;sentation, FHSV Saarland.</li>
+        <li>Akademie der Polizei Hamburg (2020) <a href="https://media.frag-den-staat.de/files/foi/678793/modulhandbuch-stand-10-09-2020-do.pdf" target="_blank" rel="noopener">Modulhandbuch Studiengang Polizei (B.A.), Stand 10.09.2020</a>. Hamburg: Akademie der Polizei.</li>
+        <li>Middendorff, E. et al. (2017) Die wirtschaftliche und soziale Lage der Studierenden in Deutschland 2016: 21. Sozialerhebung. Berlin: BMBF.</li>
+        <li>Paulus, J. (2026) Selbststudium und Klausurvorbereitung im Diplomstudium: Untersuchung und Faktorenmodell. Entwurf, FHSV Saarland.</li>
+        <li>Saarland (2024) Ausbildungs- und Pr&#252;fungsordnung f&#252;r den Laufbahnabschnitt des gehobenen Polizeivollzugsdienstes (APO g. D. Pol.) vom 13. September 2024, Amtsbl. I S. 729, zuletzt ge&#228;ndert am 4. M&#228;rz 2025, Amtsbl. I S. 254.</li>
+        <li>Schulmeister, R. und Metzger, C. (Hrsg.) (2011) Die Workload im Bachelor: Zeitbudget und Studierverhalten. M&#252;nster: Waxmann.</li>
+        <li>Vogel, B. und Woisch, A. (2013) Orte des Selbststudiums. HIS:Forum Hochschule 7/2013. Hannover: HIS.</li>
+      </ul>
+    </section>
+  </div>
+
+</div>
+
+<script>
+const KEY='diplom-workload-v1';
+const SEED_ID='fhsv-pol-2024-3';
+const uid=()=>Math.random().toString(36).slice(2,9);
+const fach=(name,wert,einheit,faktor,pruef)=>({id:uid(),name,wert,einheit,faktor,pruef});
+const L=(n,w,f,p)=>fach(n,w,'LVh',f,p||0);
+const P=(n,p)=>fach(n,0,'Std',0,p);
+/* Normalwerte je Pr\u00e4senzstunde aus der Workload-Untersuchung 2026: [Theorie, Recht, Seminar/\u00dcbung, Training] */
+const NW={gs:[.47,.56,.37,.05],hs1:[.53,.64,.43,.05],hs2:[.60,.72,.48,.06]};
+function hsHaelfte(p){const [t,r,s,tr]=NW[p];return [
+  L('Einsatzlehre',58,t),L('Kriminalistik',55,t),L('Cybercrime',35,t),L('Kriminologie',47,t),L('Kriminaltechnik',21,t),
+  L('Verkehrsunfallaufnahme',18,t),L('Verkehrslehre',15,t),L('Organisation und Personalmanagement',18,t),
+  L('Staats- und Verfassungsrecht',38,r),L('Eingriffsrecht',110,r),L('Strafrecht',45,r),L('\u00d6ffentliches Dienstrecht',15,r),L('Verkehrsrecht',35,r),
+  L('Psychologie',28,t),L('Soziologie',17,t),L('Politik',30,t),L('Berufsethik',20,t),
+  L('Einsatzm\u00e4\u00dfiges Schie\u00dfen',20,tr),L('Integriertes Einsatztraining',56,tr),L('Abwehr- und Zugriffstechniken',25,tr),
+  L('Kommunikationstraining / Konfliktmanagement',16,s),L('Demokratische Resilienz',12,s),
+  L('Seminare',30,s),L('Ganzheitliche Trainings',9,tr),L('\u00dcbungen (Erstintervention, H\u00e4usliche Gewalt, Vernehmung, Durchsuchung)',30,tr),
+  L('Sport (Drittel von 150 LVh)',50,tr)]}
+function beispiel(){const [t,r,se,tr]=NW.gs;return {seed:SEED_ID,beispiel:true,faktor:.47,pruef:20,schwelle:40,abschnitte:[
+  {id:uid(),name:'1. Jahr: Grundstudium, Fachstudium',wochen:27,faecher:[
+    L('Einsatzlehre',40,t,18),L('Kriminalistik',62,t,29),L('Verkehrsunfallaufnahme',50,t,23),
+    L('Staats- und Verfassungsrecht',24,r,11),L('Polizeirecht',70,r,32),L('Strafrecht',80,r,37),
+    L('Strafprozessrecht',44,r,20),L('Verkehrsrecht',76,r,35),L('\u00d6ffentliches Dienstrecht',26,r,12),
+    L('Praxiskunde',16,se),L('Schie\u00dfen',80,tr),L('Integriertes Einsatztraining',64,tr),L('Abwehr- und Zugriffstechniken',26,tr),
+    L('Schl\u00fcsselkompetenzen I (Methode)',20,se),L('Schl\u00fcsselkompetenzen II (Subsumtion)',20,se),
+    L('Seminar Datenverarbeitung in der Polizei',56,se),
+    L('Sport (Drittel von 150 LVh)',50,tr),L('Projekte (Anteil von 40 LVh)',14,se)]},
+  {id:uid(),name:'2. Jahr: Hauptstudium I (Okt bis Feb, Mai bis Sep)',wochen:30,faecher:[
+    ...hsHaelfte('hs1'),
+    L('Schl\u00fcsselkompetenzen III (wissenschaftliches Arbeiten)',20,NW.hs1[2]),
+    L('Projekte (Anteil von 40 LVh)',13,NW.hs1[2]),
+    P('Klausur Polizeiwissenschaften, 120 Min. (Vornote zweifach, Bestehen einfach)',85),
+    P('Klausur Rechtswissenschaften, 120 Min. (Vornote zweifach, Bestehen einfach)',95),
+    P('LN Hausarbeit, max. 8 Seiten',50),
+    P('LN Aufsichtsarbeit Seminar, 60 Min.',20),
+    P('LN Aufsichtsarbeit berufsbezogene GW, 90 Min.',31)]},
+  {id:uid(),name:'3. Jahr: Hauptstudium II (Okt bis Dez, M\u00e4r bis Sep)',wochen:34,faecher:[
+    ...hsHaelfte('hs2'),
+    L('Examensklausurenkurs',10,1),
+    L('Projekte (Anteil von 40 LVh)',13,NW.hs2[2]),
+    P('Klausur Polizeiwissenschaften, 180 Min. (Vornote dreifach, Bestehen einfach)',105),
+    P('Klausur Rechtswissenschaften, 180 Min. (Vornote dreifach, Bestehen einfach)',115),
+    P('LN Aufsichtsarbeit Seminar, 60 Min.',20),
+    P('LN praktische Leistungsabnahme',10),
+    P('LN Aufsichtsarbeit berufsbezogene GW, 90 Min.',31),
+    P('Diplomarbeit (3 Monate ab Oktober, max. 30 Seiten)',200),
+    P('Wiederholung f\u00fcr die Abschlusspr\u00fcfung, laufend',130)]},
+  {id:uid(),name:'Pr\u00fcfungszeit nach dem 3. Jahr (Okt bis Dez)',wochen:10,faecher:[
+    P('Endspurt schriftliche Pr\u00fcfung, 3 Arbeiten \u00e0 4 Std.',100),
+    P('Vorbereitung m\u00fcndliche Pr\u00fcfung',60)]}
+]}}
+let S;
+try{const raw=localStorage.getItem(KEY); const st=raw?JSON.parse(raw):null; S=(st&&st.seed===SEED_ID)?st:beispiel();}catch(e){S=beispiel();}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const num=v=>{const n=parseFloat(String(v).replace(',','.'));return isFinite(n)?n:0};
+const fmt=(n,d=1)=>n.toLocaleString('de-DE',{maximumFractionDigits:d,minimumFractionDigits:0});
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function calcFach(f,w){
+  const praes=f.einheit==='LVh'?num(f.wert)*0.75:(f.einheit==='SWS'?num(f.wert)*w:num(f.wert));
+  const selbst=praes*num(f.faktor), pruef=num(f.pruef), ges=praes+selbst+pruef;
+  return {praes,selbst,pruef,ges,praesW:w?praes/w:0,lernW:w?(selbst+pruef)/w:0};
+}
+function calcSect(a){
+  const w=num(a.wochen); const t={praes:0,selbst:0,pruef:0,ges:0};
+  a.faecher.forEach(f=>{const c=calcFach(f,w);t.praes+=c.praes;t.selbst+=c.selbst;t.pruef+=c.pruef;t.ges+=c.ges});
+  t.praesW=w?t.praes/w:0; t.lernW=w?(t.selbst+t.pruef)/w:0; t.gesW=t.praesW+t.lernW; return t;
+}
+function status(h){const s=num(S.schwelle)||40; if(h<=s)return['ok','im Rahmen']; if(h<=s*1.2)return['warn','knapp']; return['bad','zu viel'];}
+
+let curSect=null; try{curSect=localStorage.getItem('dwr-sect')}catch(e){}
+const shortName=n=>{n=String(n||'Ohne Namen');const i=n.indexOf(':');return (i>0?n.slice(0,i):n.split(' (')[0]).trim()||'Ohne Namen';};
+function renderSections(){
+  const box=document.getElementById('sections');
+  if(!S.abschnitte.some(a=>a.id===curSect)) curSect=S.abschnitte.length?S.abschnitte[0].id:null;
+  const tabs=S.abschnitte.length?`<nav class="secttabs" role="tablist" aria-label="Studienabschnitte">${S.abschnitte.map(a=>`<button type="button" role="tab" data-sectab="${a.id}" aria-selected="${a.id===curSect}" class="${a.id===curSect?'on':''}"><span data-tablbl="${a.id}">${esc(shortName(a.name))}</span><span class="dot" data-dot="${a.id}"></span></button>`).join('')}</nav>`:'';
+  box.innerHTML=tabs+S.abschnitte.map(a=>`
+  <section class="panel" data-sect="${a.id}" role="tabpanel"${a.id===curSect?'':' hidden'}>
+    <div class="secthead">
+      <div class="row">
+        <label class="fld" for="s-${a.id}-name">Studienabschnitt<input class="sname" id="s-${a.id}-name" data-s="${a.id}" data-k="name" value="${esc(a.name)}"></label>
+        <label class="fld" for="s-${a.id}-w">Dauer (Wochen)<input id="s-${a.id}-w" type="number" min="1" step="1" data-s="${a.id}" data-k="wochen" value="${esc(a.wochen)}"></label>
+      </div>
+      <div class="row"><span class="pill" data-stat="${a.id}"></span><button class="ghost" type="button" data-delsect="${a.id}" aria-label="Abschnitt l\u00f6schen">Abschnitt l\u00f6schen</button></div>
+    </div>
+    <div class="tablebox ftbox"><table class="ft">
+      <thead><tr><th>Fach</th><th class="n">Umfang</th><th>Einheit</th><th class="n">Faktor</th><th class="n">Pr\u00fcf.-Vorb.</th><th class="n">Pr\u00e4senz</th><th class="n">Selbst&shy;studium</th><th class="n">Gesamt</th><th class="n">Lernen / Woche</th><th></th></tr></thead>
+      <tbody>${a.faecher.map(f=>`
+        <tr>
+          <td class="fname"><input class="name" id="f-${f.id}-name" aria-label="Fach" data-f="${f.id}" data-s="${a.id}" data-k="name" value="${esc(f.name)}"></td>
+          <td class="n" data-l="Umfang"><input id="f-${f.id}-wert" type="number" min="0" step="0.5" aria-label="Stunden" data-f="${f.id}" data-s="${a.id}" data-k="wert" value="${esc(f.wert)}"></td>
+          <td data-l="Einheit"><select id="f-${f.id}-einheit" aria-label="Einheit" data-f="${f.id}" data-s="${a.id}" data-k="einheit"><option value="LVh"${f.einheit==='LVh'?' selected':''}>LVh</option><option value="SWS"${f.einheit==='SWS'?' selected':''}>SWS</option><option value="Std"${f.einheit==='Std'?' selected':''}>Std. gesamt</option></select></td>
+          <td class="n" data-l="Faktor"><input id="f-${f.id}-faktor" type="number" min="0" step="0.01" aria-label="Faktor" data-f="${f.id}" data-s="${a.id}" data-k="faktor" value="${esc(f.faktor)}"></td>
+          <td class="n" data-l="Pr\u00fcf.-Vorb."><input id="f-${f.id}-pruef" type="number" min="0" step="5" aria-label="Pr\u00fcfungsvorbereitung in Stunden" data-f="${f.id}" data-s="${a.id}" data-k="pruef" value="${esc(f.pruef)}"></td>
+          <td class="n" data-l="Pr\u00e4senz" data-o="${f.id}-praes"></td><td class="n" data-l="Selbststudium" data-o="${f.id}-selbst"></td>
+          <td class="n" data-l="Gesamt" data-o="${f.id}-ges"></td><td class="n strong" data-l="Lernen / Woche" data-o="${f.id}-lernW"></td>
+          <td class="del"><button class="ghost" type="button" data-delf="${f.id}" data-s="${a.id}" aria-label="Fach l\u00f6schen">\u2715</button></td>
+        </tr>`).join('')}</tbody>
+      <tfoot><tr><td class="fname">Summe</td><td></td><td></td><td></td><td class="n" data-l="Pr\u00fcf.-Vorb." data-o="${a.id}-pruef"></td><td class="n" data-l="Pr\u00e4senz" data-o="${a.id}-praes"></td><td class="n" data-l="Selbststudium" data-o="${a.id}-selbst"></td><td class="n" data-l="Gesamt" data-o="${a.id}-ges"></td><td class="n strong" data-l="Lernen / Woche" data-o="${a.id}-lernW"></td><td></td></tr></tfoot>
+    </table></div>
+    <div class="row"><button type="button" data-addf="${a.id}">+ Fach</button></div>
+  </section>`).join('');
+  document.getElementById('gFaktor').value=S.faktor;
+  document.getElementById('gPruef').value=S.pruef;
+  document.getElementById('gSchwelle').value=S.schwelle;
+  update();
+}
+const out=(k,v)=>{const el=document.querySelector(`[data-o="${k}"]`); if(el) el.textContent=v;};
+function update(){
+  document.getElementById('exampleBadge').hidden=!S.beispiel;
+  let tot={praes:0,selbst:0,pruef:0,ges:0,wochen:0}; let rows='';
+  S.abschnitte.forEach(a=>{
+    const w=num(a.wochen);
+    a.faecher.forEach(f=>{const c=calcFach(f,w);
+      out(f.id+'-praes',fmt(c.praes,0)+' h');out(f.id+'-selbst',fmt(c.selbst,0)+' h');out(f.id+'-ges',fmt(c.ges,0)+' h');out(f.id+'-lernW',fmt(c.lernW)+' h');});
+    const t=calcSect(a);
+    out(a.id+'-praes',fmt(t.praes,0)+' h');out(a.id+'-selbst',fmt(t.selbst,0)+' h');out(a.id+'-pruef',fmt(t.pruef,0)+' h');out(a.id+'-ges',fmt(t.ges,0)+' h');out(a.id+'-lernW',fmt(t.lernW)+' h');
+    const [cls,txt]=status(t.gesW);
+    const p=document.querySelector(`[data-stat="${a.id}"]`); if(p){p.className='pill '+cls;p.textContent=fmt(t.gesW)+' h/Woche, '+txt;}
+    const dt=document.querySelector(`[data-dot="${a.id}"]`); if(dt){dt.className='dot '+cls;dt.title=fmt(t.gesW)+' h/Woche';}
+    const tl=document.querySelector(`[data-tablbl="${a.id}"]`); if(tl) tl.textContent=shortName(a.name);
+    tot.praes+=t.praes;tot.selbst+=t.selbst;tot.pruef+=t.pruef;tot.ges+=t.ges;tot.wochen+=w;
+    rows+=`<tr><td><button type="button" class="linkbtn" data-sectab="${a.id}" title="${esc(a.name||'')}">${esc(shortName(a.name))}</button></td><td class="n">${fmt(w,0)}</td><td class="n">${fmt(t.praesW)} h</td><td class="n">${fmt(t.lernW)} h</td><td class="n strong">${fmt(t.gesW)} h</td><td class="n">${fmt(t.ges,0)} h</td><td><span class="pill ${cls}">${txt}</span></td></tr>`;
+  });
+  document.getElementById('sumTable').innerHTML=`<thead><tr><th>Abschnitt</th><th class="n">Wochen</th><th class="n">Pr\u00e4senz / Woche</th><th class="n">Lernen / Woche</th><th class="n">Gesamt / Woche</th><th class="n">Gesamt</th><th>Ampel</th></tr></thead><tbody>${rows||'<tr><td colspan="7">Noch kein Studienabschnitt angelegt.</td></tr>'}</tbody>`;
+  const avg=tot.wochen?tot.ges/tot.wochen:0;
+  document.getElementById('kpis').innerHTML=`
+    <div class="kpi"><span class="eyebrow">Gesamtaufwand</span><span class="big">${fmt(tot.ges,0)} h</span></div>
+    <div class="kpi"><span class="eyebrow">davon eigenes Lernen</span><span class="big">${fmt(tot.selbst+tot.pruef,0)} h</span></div>
+    <div class="kpi"><span class="eyebrow">\u00d8 pro Lehrwoche</span><span class="big">${fmt(avg)} h</span></div>`;
+}
+function findSect(id){return S.abschnitte.find(a=>a.id===id)}
+document.addEventListener('input',e=>{
+  const t=e.target; if(t.id==='io') return;
+  if(t.id==='gFaktor'){S.faktor=t.value}else if(t.id==='gPruef'){S.pruef=t.value}else if(t.id==='gSchwelle'){S.schwelle=t.value}
+  else if(t.dataset.k){const a=findSect(t.dataset.s); if(!a)return;
+    if(t.dataset.f){const f=a.faecher.find(x=>x.id===t.dataset.f); if(f) f[t.dataset.k]=t.value;} else a[t.dataset.k]=t.value;}
+  else return;
+  S.beispiel=false; save(); update();
+});
+document.addEventListener('change',e=>{if(e.target.tagName==='SELECT')e.target.dispatchEvent(new Event('input',{bubbles:true}))});
+let clearArmed=null;
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return; const d=b.dataset;
+  if(d.sectab){curSect=d.sectab;try{localStorage.setItem('dwr-sect',curSect)}catch(e){}renderSections();const t=document.querySelector(`[data-sectab="${curSect}"]`);if(t){t.focus();t.scrollIntoView({block:'nearest',inline:'center'});}}
+  else if(d.addf){findSect(d.addf).faecher.push(fach('',0,'LVh',num(S.faktor),num(S.pruef)));S.beispiel=false;save();renderSections();
+    const sec=findSect(d.addf); const last=sec.faecher[sec.faecher.length-1]; const el=document.getElementById(`f-${last.id}-name`); if(el) el.focus();}
+  else if(d.delf){const a=findSect(d.s); a.faecher=a.faecher.filter(f=>f.id!==d.delf);S.beispiel=false;save();renderSections();}
+  else if(d.delsect){S.abschnitte=S.abschnitte.filter(a=>a.id!==d.delsect);S.beispiel=false;save();renderSections();}
+  else if(b.id==='addSect'){const nid=uid();S.abschnitte.push({id:nid,name:'Neuer Abschnitt',wochen:15,faecher:[fach('',0,'LVh',num(S.faktor),num(S.pruef))]});curSect=nid;S.beispiel=false;save();renderSections();}
+  else if(b.id==='loadEx'){S=beispiel();save();renderSections();}
+  else if(b.id==='clearAll'){
+    if(clearArmed){clearTimeout(clearArmed);clearArmed=null;b.textContent='Alles leeren';S={seed:SEED_ID,beispiel:false,faktor:.47,pruef:20,schwelle:40,abschnitte:[]};save();renderSections();}
+    else{b.textContent='Wirklich alles leeren? Nochmal klicken';clearArmed=setTimeout(()=>{b.textContent='Alles leeren';clearArmed=null},4000);}
+  }
+  else if(b.id==='copyBtn'){const txt=JSON.stringify(S);const io=document.getElementById('io');io.value=txt;
+    const msg=document.getElementById('msg');
+    try{navigator.clipboard.writeText(txt).then(()=>msg.textContent='Kopiert.',()=>{io.select();msg.textContent='Text unten markieren und kopieren.'})}catch(err){io.select();msg.textContent='Text unten markieren und kopieren.'}}
+  else if(b.id==='importBtn'){const msg=document.getElementById('msg');
+    try{const d=JSON.parse(document.getElementById('io').value); if(!Array.isArray(d.abschnitte)) throw 0; d.seed=SEED_ID; S=d; save(); renderSections(); msg.textContent='Daten \u00fcbernommen.';}
+    catch(err){msg.textContent='Das sind keine g\u00fcltigen Rechner-Daten. Bitte den kompletten kopierten Text einf\u00fcgen.'}}
+});
+renderSections();
+
+/* ---------- Reiter ---------- */
+const TABS=['rechner','tagebuch','quellen'];
+function showTab(t){
+  if(!TABS.includes(t)) t='rechner';
+  TABS.forEach(x=>{
+    document.getElementById('tab-'+x).hidden=(x!==t);
+    const b=document.getElementById('tb-'+x); b.setAttribute('aria-selected',x===t?'true':'false'); b.classList.toggle('on',x===t);
+  });
+  try{localStorage.setItem('dwr-tab',t)}catch(e){}
+  if(t==='tagebuch') tbRender();
+}
+document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+(function(){let t=(location.hash||'').slice(1);if(!TABS.includes(t)){try{t=localStorage.getItem('dwr-tab')||'rechner'}catch(e){t='rechner'}}showTab(t);})();
+
+/* ---------- Lerntagebuch ---------- */
+const TB_KEY='lerntagebuch-v1';
+const ART={U:'Unterricht',N:'Vor- und Nachbereitung',K:'Klausurvorbereitung',H:'Hausarbeit, Projekt, Referat'};
+let T={entries:[],belastung:{},pseudo:''};
+let tbDb=null, tbRef=null, tbMode='local', tbSaving=false, tbDirty=false, tbTimer=null;
+try{const r=localStorage.getItem(TB_KEY); if(r){const d=JSON.parse(r); if(d&&Array.isArray(d.entries)) T=Object.assign(T,d);}}catch(e){}
+
+const pad=n=>String(n).padStart(2,'0');
+const isoDay=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+function isoWeek(ds){const d=new Date(ds+'T12:00:00');const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day+3);
+  const y=d.getFullYear();const f=new Date(y,0,4);const w=1+Math.round(((d-f)/864e5-3+((f.getDay()+6)%7))/7);return y+'-W'+pad(w);}
+function weekLabel(k){const w=k.split('-W')[1];return 'KW '+parseInt(w,10);}
+const hrs=m=>m/60;
+
+function tbStoreLabel(){const el=document.getElementById('tbStore');
+  if(tbMode==='db'){el.className='pill ok';el.textContent='Privat in deinem Konto gespeichert';}
+  else{el.className='pill warn';el.textContent='Nur in diesem Browser gespeichert';}}
+
+function tbSaveLocal(){try{localStorage.setItem(TB_KEY,JSON.stringify(T))}catch(e){}}
+async function tbFlush(){
+  if(tbMode!=='db'||!tbRef) return;
+  if(tbSaving){tbDirty=true;return;}
+  tbSaving=true; tbDirty=false;
+  try{await tbRef.set(JSON.parse(JSON.stringify(T)));}
+  catch(e){ if(e&&e.code==='invalid_argument'){tbMode='local';tbStoreLabel();} else if(e&&e.code==='quota_exceeded'){msg('tbMsg','Speicher voll. Bitte alte Monate exportieren und l\u00f6schen.');} }
+  tbSaving=false; if(tbDirty) tbFlush();
+}
+function tbSave(){tbSaveLocal(); clearTimeout(tbTimer); tbTimer=setTimeout(tbFlush,800);}
+
+(async function tbConnect(){
+  tbStoreLabel();
+  try{
+    if(!window.claude||!claude.use) return;
+    const [db,user]=await Promise.all([claude.use('db'),claude.use('user')]);
+    if(!db||!user) return;
+    const id=await user.id(); if(!id) return;
+    tbDb=db; tbRef=db.doc('data/users/'+id+'/lerntagebuch');
+    const snap=await tbRef.get();
+    if(snap.exists){const d=snap.data(); if(d&&Array.isArray(d.entries)){
+        // Eintr\u00e4ge zusammenf\u00fchren, falls auf diesem Ger\u00e4t zuvor offline erfasst wurde
+        const ids=new Set(d.entries.map(x=>x.id)); const extra=T.entries.filter(x=>!ids.has(x.id)&&!x.demo);
+        T=Object.assign({entries:[],belastung:{},pseudo:''},JSON.parse(JSON.stringify(d)));
+        if(extra.length){T.entries=T.entries.concat(extra);}
+        tbMode='db'; tbStoreLabel(); tbSaveLocal(); if(extra.length) tbFlush(); tbRender(); return;}}
+    tbMode='db'; tbStoreLabel();
+    if(T.entries.length) await tbFlush();
+  }catch(e){ tbMode='local'; tbStoreLabel(); }
+})();
+
+function msg(id,t){const el=document.getElementById(id); if(el){el.textContent=t; clearTimeout(el._t); el._t=setTimeout(()=>{el.textContent=''},5000);}}
+
+function tbFaecherList(){const set=new Set();
+  S.abschnitte.forEach(a=>a.faecher.forEach(f=>{if(f.einheit==='LVh'&&f.name) set.add(f.name.replace(/\s*\(.*\)\s*$/,''));}));
+  T.entries.forEach(e=>e.fach&&set.add(e.fach));
+  document.getElementById('tbFaecher').innerHTML=[...set].sort((a,b)=>a.localeCompare(b,'de')).map(n=>'<option value="'+esc(n)+'">').join('');}
+
+function tbMonth(){const el=document.getElementById('tbMonat'); if(!el.value){const d=new Date(); el.value=d.getFullYear()+'-'+pad(d.getMonth()+1);} return el.value;}
+
+function tbAgg(list){const r={U:0,N:0,K:0,H:0}; list.forEach(e=>{r[e.art]=(r[e.art]||0)+e.min}); r.lern=r.N+r.H; r.all=r.U+r.N+r.K+r.H; return r;}
+const fakt=(r)=>r.U>0?(r.N+r.H)/r.U:null;
+
+function tbRender(){
+  if(document.getElementById('tab-tagebuch').hidden) return;
+  tbFaecherList();
+  const mon=tbMonth();
+  const list=T.entries.filter(e=>e.d.slice(0,7)===mon).sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:0);
+  const empty=list.length===0;
+  document.getElementById('tbEmpty').hidden=!empty;
+  document.getElementById('tbResult').hidden=empty;
+  document.getElementById('tbDemoBadge').hidden=!T.entries.some(e=>e.demo);
+  const r=tbAgg(list);
+  const weeks={}; list.forEach(e=>{const k=isoWeek(e.d);(weeks[k]=weeks[k]||[]).push(e)});
+  const wk=Object.keys(weeks).sort();
+  const nW=Math.max(1,wk.length);
+  const f=fakt(r), plan=num(S.faktor)||0.47;
+  const fTxt=f===null?'noch kein Unterricht erfasst':fmt(f,2);
+  const fCls=f===null?'':(f<plan*0.8?'warn':(f>plan*1.5?'warn':'ok'));
+  document.getElementById('tbKpis').innerHTML=
+    kpi('Unterricht',fmt(hrs(r.U))+' h')+kpi('Eigenes Lernen',fmt(hrs(r.lern))+' h')+kpi('Klausurvorbereitung',fmt(hrs(r.K))+' h')
+    +kpi('\u00d8 pro erfasster Woche',fmt(hrs(r.all)/nW)+' h')
+    +'<div class="kpi"><span class="eyebrow">Dein Faktor Lernen : Unterricht</span><span class="big">'+fTxt+'</span><span class="note">Planwert im Rechner: '+fmt(plan,2)+(f!==null?' <span class="pill '+fCls+'">'+(fCls==='ok'?'passt':'weicht ab')+'</span>':'')+'</span></div>';
+  // Wochen-Tabelle
+  const schw=num(S.schwelle)||40;
+  let rows=wk.map(k=>{const a=tbAgg(weeks[k]);const g=hrs(a.all);const [c,t]=g<=schw?['ok','im Rahmen']:(g<=schw*1.2?['warn','knapp']:['bad','zu viel']);
+    const b=T.belastung[k]||'';
+    return '<tr><td>'+weekLabel(k)+'</td><td class="n">'+fmt(hrs(a.U))+' h</td><td class="n">'+fmt(hrs(a.lern))+' h</td><td class="n">'+fmt(hrs(a.K))+' h</td><td class="n strong">'+fmt(g)+' h</td><td><span class="pill '+c+'">'+t+'</span></td>'
+      +'<td><select id="bl-'+k+'" data-bel="'+k+'" aria-label="Belastung '+weekLabel(k)+'"><option value="">offen</option>'+[1,2,3,4,5].map(v=>'<option value="'+v+'"'+(String(b)===String(v)?' selected':'')+'>'+v+'</option>').join('')+'</select></td></tr>';}).join('');
+  document.getElementById('tbWeeks').innerHTML='<thead><tr><th>Woche</th><th class="n">Unterricht</th><th class="n">Lernen</th><th class="n">Klausurvorb.</th><th class="n">Gesamt</th><th>Ampel</th><th>Belastung 1 bis 5</th></tr></thead><tbody>'+rows+'</tbody>';
+  tbChart(wk,weeks,schw);
+  // Fach-Tabelle
+  const byF={}; list.forEach(e=>{(byF[e.fach]=byF[e.fach]||[]).push(e)});
+  const fr=Object.keys(byF).sort((a,b)=>a.localeCompare(b,'de')).map(n=>{const a=tbAgg(byF[n]);const ff=fakt(a);
+    return '<tr><td>'+esc(n)+'</td><td class="n">'+fmt(hrs(a.U))+' h</td><td class="n">'+fmt(hrs(a.lern))+' h</td><td class="n">'+fmt(hrs(a.K))+' h</td><td class="n strong">'+(ff===null?'kein Unterricht':fmt(ff,2))+'</td></tr>';}).join('');
+  document.getElementById('tbFachTab').innerHTML='<thead><tr><th>Fach</th><th class="n">Unterricht</th><th class="n">Lernen</th><th class="n">Klausurvorb.</th><th class="n">Faktor</th></tr></thead><tbody>'+fr+'</tbody>';
+  document.getElementById('tbApply').disabled=(f===null);
+  // Eintragsliste
+  document.getElementById('tbList').innerHTML=empty?'<tbody><tr><td class="note">Keine Eintr\u00e4ge in diesem Monat.</td></tr></tbody>':
+    '<thead><tr><th>Datum</th><th>Fach</th><th>Art</th><th class="n">Dauer</th><th>Notiz</th><th></th></tr></thead><tbody>'+list.map(e=>
+    '<tr><td class="n">'+e.d.split('-').reverse().join('.')+'</td><td>'+esc(e.fach)+(e.demo?' <span class="pill warn">Beispiel</span>':'')+'</td><td>'+ART[e.art]+'</td><td class="n">'+fmt(hrs(e.min),2)+' h</td><td>'+esc(e.notiz||'')+'</td><td><button class="ghost" type="button" data-tbdel="'+e.id+'" aria-label="Eintrag l\u00f6schen">\u2715</button></td></tr>').join('')+'</tbody>';
+  document.getElementById('tbPseudo').value=T.pseudo||'';
+}
+function kpi(l,v){return '<div class="kpi"><span class="eyebrow">'+l+'</span><span class="big">'+v+'</span></div>';}
+
+function tbChart(wk,weeks,schw){
+  const el=document.getElementById('tbChart');
+  if(!wk.length){el.innerHTML='';return;}
+  const data=wk.map(k=>{const a=tbAgg(weeks[k]);return {k,U:hrs(a.U),L:hrs(a.lern),K:hrs(a.K)};});
+  const maxV=Math.max(schw*1.1,...data.map(d=>d.U+d.L+d.K));
+  const top=Math.ceil(maxV/10)*10;
+  const W=640,H=230,pl=40,pr=12,pt=14,pb=34; const iw=W-pl-pr, ih=H-pt-pb;
+  const bw=Math.min(70,iw/data.length*0.6);
+  const y=v=>pt+ih-(v/top)*ih;
+  let g='';
+  for(let v=0;v<=top;v+=10){g+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+y(v)+'" y2="'+y(v)+'" class="grid"/><text x="'+(pl-6)+'" y="'+(y(v)+4)+'" class="ax" text-anchor="end">'+v+'</text>';}
+  g+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+y(schw)+'" y2="'+y(schw)+'" class="lim"/><text x="'+(W-pr)+'" y="'+(y(schw)-5)+'" class="ax" text-anchor="end">Warnschwelle '+schw+' h</text>';
+  data.forEach((d,i)=>{const cx=pl+iw*(i+0.5)/data.length; const x=cx-bw/2; let base=0;
+    [['U','c1'],['L','c2'],['K','c3']].forEach(([key,c])=>{const v=d[key]; if(v>0){g+='<rect x="'+x+'" y="'+y(base+v)+'" width="'+bw+'" height="'+(y(base)-y(base+v))+'" class="'+c+'"><title>'+weekLabel(d.k)+': '+fmt(v)+' h</title></rect>';} base+=v;});
+    g+='<text x="'+cx+'" y="'+(y(base)-5)+'" class="val" text-anchor="middle">'+fmt(base)+'</text><text x="'+cx+'" y="'+(H-pb+16)+'" class="ax" text-anchor="middle">'+weekLabel(d.k)+'</text>';});
+  el.innerHTML='<div class="legend"><span><i class="c1"></i>Unterricht</span><span><i class="c2"></i>Eigenes Lernen</span><span><i class="c3"></i>Klausurvorbereitung</span></div><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">'+g+'</svg>';
+}
+
+document.getElementById('tbDate').value=isoDay(new Date());
+document.getElementById('tbForm').addEventListener('submit',ev=>{
+  ev.preventDefault();
+  const d=document.getElementById('tbDate').value, fach=document.getElementById('tbFach').value.trim();
+  const v=num(document.getElementById('tbDauer').value), u=document.getElementById('tbEinheit').value;
+  if(!d||!fach||v<=0){msg('tbMsg','Bitte Datum, Fach und eine Dauer \u00fcber 0 eintragen.');return;}
+  const min=Math.round(u==='h'?v*60:(u==='lvh'?v*45:v));
+  if(min>16*60){msg('tbMsg','Mehr als 16 Stunden an einem Eintrag? Bitte die Dauer pr\u00fcfen.');return;}
+  T.entries.push({id:uid()+uid(),d,fach,art:document.getElementById('tbArt').value,min,notiz:document.getElementById('tbNotiz').value.trim().slice(0,200)});
+  tbSave();
+  document.getElementById('tbMonat').value=d.slice(0,7);
+  document.getElementById('tbDauer').value=''; document.getElementById('tbNotiz').value='';
+  tbRender(); msg('tbMsg','Eingetragen: '+fmt(hrs(min),2)+' h '+ART[T.entries[T.entries.length-1].art]+', '+fach+'.');
+});
+document.getElementById('tbMonat').addEventListener('input',tbRender);
+document.getElementById('tbPseudo').addEventListener('change',e=>{T.pseudo=e.target.value.trim().slice(0,40);tbSave();});
+document.getElementById('tab-tagebuch').addEventListener('change',e=>{const k=e.target.dataset&&e.target.dataset.bel; if(!k)return; if(e.target.value) T.belastung[k]=Number(e.target.value); else delete T.belastung[k]; tbSave();});
+let applyArmed=null;
+document.getElementById('tab-tagebuch').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  if(b.dataset.tbdel){T.entries=T.entries.filter(x=>x.id!==b.dataset.tbdel);tbSave();tbRender();}
+  else if(b.id==='tbDemo'){
+    const now=new Date(); const mon=new Date(now.getFullYear(),now.getMonth(),1); while(mon.getDay()!==1) mon.setDate(mon.getDate()+1);
+    const day=i=>{const x=new Date(mon);x.setDate(mon.getDate()+i);return isoDay(x);};
+    const ex=[[0,'Strafrecht','U',4*45],[0,'Polizeirecht','U',4*45],[0,'Strafrecht','N',60],[1,'Einsatzlehre','U',4*45],[1,'Kriminalistik','U',4*45],[1,'Polizeirecht','N',45],
+      [2,'Verkehrsrecht','U',6*45],[2,'Verkehrsrecht','N',40],[3,'Strafprozessrecht','U',4*45],[3,'Schie\u00dfen','U',4*45],[3,'Strafrecht','K',90],[4,'Kriminalistik','U',4*45],[4,'Kriminalistik','N',50],[5,'Strafrecht','K',120]];
+    ex.forEach(([i,f,a,m])=>T.entries.push({id:uid()+uid(),d:day(i),fach:f,art:a,min:m,demo:true}));
+    document.getElementById('tbMonat').value=day(0).slice(0,7); tbSave(); tbRender();
+  }
+  else if(b.id==='tbDemoDel'){T.entries=T.entries.filter(x=>!x.demo);tbSave();tbRender();}
+  else if(b.id==='tbApply'){
+    const mon=tbMonth(); const r=tbAgg(T.entries.filter(x=>x.d.slice(0,7)===mon)); const f=fakt(r); if(f===null) return;
+    if(!applyArmed){b.textContent='Faktor '+fmt(f,2)+' f\u00fcr alle Theorief\u00e4cher \u00fcbernehmen? Nochmal klicken';applyArmed=setTimeout(()=>{b.textContent='Meinen Faktor im Rechner verwenden';applyArmed=null},5000);return;}
+    clearTimeout(applyArmed);applyArmed=null;b.textContent='Meinen Faktor im Rechner verwenden';
+    const rf=Math.round(f*100)/100; let n=0;
+    S.abschnitte.forEach(a=>a.faecher.forEach(x=>{if(x.einheit==='LVh'&&num(x.faktor)>0){x.faktor=rf;n++;}})); S.faktor=rf; S.beispiel=false; save(); renderSections();
+    msg('tbApplyMsg','Faktor '+fmt(rf,2)+' in '+n+' Theorief\u00e4cher \u00fcbernommen. Siehe Reiter Studienplan-Rechner.');
+  }
+  else if(b.id==='tbCsvCopy'||b.id==='tbCsvSave'){
+    const head='pseudonym;datum;kalenderwoche;fach;art;minuten;belastung_woche';
+    const rows=T.entries.filter(x=>!x.demo).sort((a,b)=>a.d<b.d?-1:1).map(x=>{const k=isoWeek(x.d);return [T.pseudo||'',x.d,k,x.fach.replace(/;/g,','),ART[x.art],x.min,T.belastung[k]||''].join(';');});
+    const csv=[head,...rows].join('\n');
+    if(b.id==='tbCsvCopy'){const ta=document.getElementById('tbCsv'); ta.hidden=false; ta.value=csv;
+      try{navigator.clipboard.writeText(csv).then(()=>msg('tbExpMsg',rows.length+' Eintr\u00e4ge kopiert.'),()=>{ta.select();msg('tbExpMsg','Text unten markieren und kopieren.');});}catch(err){ta.select();msg('tbExpMsg','Text unten markieren und kopieren.');}}
+    else{(async()=>{try{const dl=await claude.use('downloads'); await dl.save({filename:'lerntagebuch_'+(T.pseudo||'export')+'.csv',data:csv}); msg('tbExpMsg','Datei angeboten.');}catch(err){msg('tbExpMsg','Speichern nicht m\u00f6glich. Bitte \u201eCSV kopieren\u201c nutzen.');}})();}
+  }
+});
+(async()=>{try{if(window.claude&&claude.use){const dl=await claude.use('downloads'); if(dl) document.getElementById('tbCsvSave').hidden=false;}}catch(e){}})();
+</script>
+</body></html>
